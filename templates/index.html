@@ -56,6 +56,7 @@
         <h1>Legal AI Assistant</h1>
 
         <textarea id="question" placeholder="Ask a legal question..."></textarea>
+        <button id="microphone">🎤</button> 
         <button onclick="askLegalQuestion()">Ask</button>
         <button onclick="clearResults()">Clear</button>
 
@@ -149,6 +150,32 @@
         function clearResults() {
             document.getElementById("results").style.display = "none";
             document.getElementById("json-content").style.display = "none";
+        }
+
+        // Voice Search Functionality
+        const microphoneButton = document.getElementById("microphone");
+        const questionTextarea = document.getElementById("question");
+
+        if (microphoneButton && questionTextarea) {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = "en-US";
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            microphoneButton.addEventListener("click", () => {
+                recognition.start();
+            });
+
+            recognition.onresult = (event) => {
+                const speechResult = event.results[0][0].transcript;
+                questionTextarea.value = speechResult;
+                recognition.stop();
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error:", event.error);
+                recognition.stop();
+            };
         }
     </script>
 
