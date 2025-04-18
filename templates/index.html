@@ -58,6 +58,7 @@
         <textarea id="question" placeholder="Ask a legal question..."></textarea>
         <button onclick="askLegalQuestion()">Ask</button>
         <button onclick="clearResults()">Clear</button>
+        <button onclick="showHistory()">Show History</button>
 
         <h2>Select Law File</h2>
         <select id="lawSelector">
@@ -79,6 +80,11 @@
             <h3>Law File Content</h3>
             <p id="loadingMessage" class="loading" style="display: none;">Loading...</p>
             <div id="json-data"></div>
+        </div>
+
+        <div id="history-content" style="display: none; margin-top: 20px; background: rgba(255, 255, 255, 0.9); padding: 15px; border-radius: 5px; text-align: left; color: black;">
+            <h3>Search History</h3>
+            <ul id="history-list"></ul>
         </div>
     </div>
 
@@ -149,6 +155,56 @@
         function clearResults() {
             document.getElementById("results").style.display = "none";
             document.getElementById("json-content").style.display = "none";
+            document.getElementById("history-content").style.display = "none"; // Hide history too
+        }
+
+        function showHistory() {
+            const historyContent = document.getElementById('history-content');
+            const historyList = document.getElementById('history-list');
+
+            // Toggle visibility: If already visible, hide it and return.
+            if (historyContent.style.display === 'block') {
+                historyContent.style.display = 'none';
+                return;
+            }
+
+            historyList.innerHTML = '<li>Loading history...</li>'; // Show loading message
+            historyContent.style.display = 'block'; // Make visible before fetch
+
+            fetch('/history') // Default is GET request
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    historyList.innerHTML = ''; // Clear loading/previous content
+                    if (data.length === 0) {
+                        historyList.innerHTML = '<li>No history found.</li>';
+                    } else {
+                        data.forEach(item => {
+                            const li = document.createElement('li');
+                            const link = document.createElement('a');
+                            link.href = '#'; // Prevent page jump
+                            link.textContent = item;
+                            link.style.cursor = 'pointer'; // Indicate it's clickable
+                            link.style.color = 'blue'; // Make it look like a link
+                            link.onclick = function() {
+                                document.getElementById('question').value = item; // Populate textarea
+                                askLegalQuestion(); // Submit the question
+                                historyContent.style.display = 'none'; // Optionally hide history after click
+                                return false; // Prevent default anchor behavior
+                            };
+                            li.appendChild(link);
+                            historyList.appendChild(li);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching history:', error);
+                    historyList.innerHTML = '<li>Error loading history.</li>';
+                });
         }
     </script>
 

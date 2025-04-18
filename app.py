@@ -5,6 +5,10 @@ import openai
 import re
 from dotenv import load_dotenv
 
+
+# Define the history file path
+HISTORY_FILE = 'search_history.txt'
+
 app = Flask(__name__)
 
 # OpenAI API Key
@@ -102,6 +106,9 @@ def ask():
     if not question:
         return jsonify({"error": "No question provided"}), 400
     
+    # Add the question to the search history
+    add_to_history(question)
+    
     advice, laws = get_legal_advice(question)
     return jsonify({"answer": advice, "laws": laws})
 
@@ -125,6 +132,24 @@ def view_json():
     ]
     
     return jsonify({"formatted": formatted_laws})
+
+
+@app.route('/history', methods=['GET'])
+def view_history():
+    """
+    Returns the search history from the history file.
+    """
+    if not os.path.exists(HISTORY_FILE):
+        return jsonify([])  # Return empty list if file doesn't exist
+
+    try:
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            # Read lines and strip newline characters
+            history = [line.strip() for line in f.readlines()]
+        return jsonify(history)
+    except Exception as e:
+        print(f"Error reading history file: {e}")
+        return jsonify([]) # Return empty list on error
 
 
 if __name__ == '__main__':
