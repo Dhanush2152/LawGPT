@@ -45,6 +45,15 @@
             text-align: left;
             color: black;
         }
+        #history-content {
+            display: none;
+            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 5px;
+            text-align: left;
+            color: black;
+        }
         img { width: 100px; margin-bottom: 20px; }
         .loading { font-style: italic; color: yellow; }
     </style>
@@ -82,9 +91,10 @@
             <div id="json-data"></div>
         </div>
 
-        <div id="history-content" style="display: none; margin-top: 20px; background: rgba(255, 255, 255, 0.9); padding: 15px; border-radius: 5px; text-align: left; color: black;">
+        <div id="history-content">
             <h3>Search History</h3>
-            <ul id="history-list"></ul>
+            <button onclick="clearHistory()" style="margin-left: 10px; background-color: #f44336;">Clear History</button> <!-- Added Clear History Button -->
+            <div id="history-list" style="margin-top: 10px;"></div> <!-- Added margin-top -->
         </div>
     </div>
 
@@ -95,6 +105,24 @@
                 alert("Please enter a question.");
                 return;
             }
+
+            // Search History Logic
+            const historyKey = 'searchHistory';
+            let searchHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
+            const trimmedQuestion = question.trim();
+
+            // Check if the current question is the same as the most recent one (case-insensitive)
+            if (searchHistory.length === 0 || searchHistory[0].toLowerCase() !== trimmedQuestion.toLowerCase()) {
+                // Add to the beginning
+                searchHistory.unshift(trimmedQuestion);
+                // Limit history size (e.g., 20 entries)
+                if (searchHistory.length > 20) {
+                    searchHistory = searchHistory.slice(0, 20);
+                }
+                // Store updated history
+                localStorage.setItem(historyKey, JSON.stringify(searchHistory));
+            }
+
 
             fetch("/ask", {
                 method: "POST",
@@ -155,56 +183,57 @@
         function clearResults() {
             document.getElementById("results").style.display = "none";
             document.getElementById("json-content").style.display = "none";
-            document.getElementById("history-content").style.display = "none"; // Hide history too
+            document.getElementById("history-content").style.display = "none"; // Also hide history
         }
 
         function showHistory() {
-            const historyContent = document.getElementById('history-content');
-            const historyList = document.getElementById('history-list');
-
-            // Toggle visibility: If already visible, hide it and return.
-            if (historyContent.style.display === 'block') {
-                historyContent.style.display = 'none';
-                return;
+            const historyKey = 'searchHistory';
+            const historyContent = document.getElementById("history-content");
+            const historyListDiv = document.getElementById("history-list");
+            
+            // Toggle visibility first
+            if (historyContent.style.display === "block") {
+                historyContent.style.display = "none";
+                return; // Hide and exit
             }
 
-            historyList.innerHTML = '<li>Loading history...</li>'; // Show loading message
-            historyContent.style.display = 'block'; // Make visible before fetch
+            // If hidden, populate and show
+            let searchHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
+            historyListDiv.innerHTML = ""; // Clear previous content
 
-            fetch('/history') // Default is GET request
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    historyList.innerHTML = ''; // Clear loading/previous content
-                    if (data.length === 0) {
-                        historyList.innerHTML = '<li>No history found.</li>';
-                    } else {
-                        data.forEach(item => {
-                            const li = document.createElement('li');
-                            const link = document.createElement('a');
-                            link.href = '#'; // Prevent page jump
-                            link.textContent = item;
-                            link.style.cursor = 'pointer'; // Indicate it's clickable
-                            link.style.color = 'blue'; // Make it look like a link
-                            link.onclick = function() {
-                                document.getElementById('question').value = item; // Populate textarea
-                                askLegalQuestion(); // Submit the question
-                                historyContent.style.display = 'none'; // Optionally hide history after click
-                                return false; // Prevent default anchor behavior
-                            };
-                            li.appendChild(link);
-                            historyList.appendChild(li);
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching history:', error);
-                    historyList.innerHTML = '<li>Error loading history.</li>';
+            if (searchHistory.length === 0) {
+                historyListDiv.innerHTML = "<p>No history yet.</p>";
+            } else {
+                const list = document.createElement('ul');
+                searchHistory.forEach(query => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = query;
+                    // Optional: Add functionality to re-search on click
+                    listItem.style.cursor = "pointer";
+                    listItem.onclick = function() { 
+                        document.getElementById('question').value = query; 
+                        askLegalQuestion(); 
+                        historyContent.style.display = 'none'; // Hide history after re-search
+                    };
+                    list.appendChild(listItem);
                 });
+                historyListDiv.appendChild(list);
+            }
+
+            historyContent.style.display = "block"; // Show the populated div
+        }
+
+        function clearHistory() {
+            const historyKey = 'searchHistory';
+            const historyListDiv = document.getElementById("history-list");
+
+            if (confirm("Are you sure you want to clear the search history?")) {
+                localStorage.removeItem(historyKey); // Remove history from storage
+                historyListDiv.innerHTML = "<p>History cleared.</p>"; // Update the display
+                // Optionally, keep the history panel open or hide it. 
+                // Hiding it might be less confusing:
+                // document.getElementById("history-content").style.display = "none"; 
+            }
         }
     </script>
 
